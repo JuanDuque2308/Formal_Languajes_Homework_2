@@ -1,6 +1,6 @@
 # SI2002 Formal Languages - Assignment 2: Subset Construction
 
-* **Student's full name:** Juan José Duque Marín, Juan Lucas Ramírez Romero, Samuel
+* **Student's full name:** Juan José Duque Marín, Juan Lucas Ramírez Romero, Samuel Pulgarin Giraldo
 * **Student's class number:** S2666-0509
 
 ## Environment
