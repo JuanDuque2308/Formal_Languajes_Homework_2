@@ -1,114 +1,173 @@
 # SI2002 Formal Languages - Assignment 2: Subset Construction
 
-* **Student's full name:** Juan José Duque Marín, Juan Lucas Ramírez Romero, Samuel Pulgarin Giraldo
-* **Student's class number:** S2666-0509
+- **Students' full names:** Juan José Duque Marín, Juan Lucas Ramírez Romero and Samuel Pulgarin
+- **Class number:** S2666-0509
 
 ## Environment
 
-* **Operating system:** Windows 11 (tested on Windows 10/11 x64, build 26200)
-
-
-* **Programming language:** Python 3 (tested with Python 3.12 and 3.13)
-
-
-* **Tools / Libraries:** Python standard library only (`os`, `re`, `sys`, `collections`). No third-party dependencies required.
-
-
+- Operating system: Windows 11 (build 10.0.26200)
+- Programming language: Python 3.12
+- Tools: no external tools or packages. Only the Python standard library is used:
+  `os`, `sys`, `re`, `collections` and, for the optional visual mode, `tkinter`
+  (included with the standard Python installer for Windows).
 
 ## How to run
 
-The program is designed to read from standard input (`sys.stdin`) or automatically load `entrada.txt` if executed directly.
+The program reads the input described in the assignment and prints, for each case,
+the transition table of the equivalent DFA.
 
-### Running with input redirection (Standard)
+**Command Prompt (cmd) or bash** (on Linux/macOS use `python3`):
 
-On Windows (Command Prompt / PowerShell):
-
-```cmd
+```
 python subset_construction.py < entrada.txt
-
 ```
 
-On Linux / macOS:
-
-```bash
-python3 subset_construction.py < entrada.txt
+**PowerShell** (it does not support `<` redirection):
 
 ```
+Get-Content entrada.txt | python subset_construction.py
+```
 
-### Running directly (e.g., in VS Code)
-
-You can also run the script directly. If no standard input is piped, it will look for `entrada.txt` in the same directory:
-
-```cmd
-python subset_construction.py
+**Any terminal**, passing the file as an argument:
 
 ```
+python subset_construction.py entrada.txt
+```
+
+All three commands print exactly the same output. Use `--cli` to force text mode
+in any situation.
+
+### Checking an input file
+
+```
+python subset_construction.py --check entrada.txt
+```
+
+This only validates the input (it does not build the DFA) and lists every problem
+found, each with its line number. The same validation runs before every
+construction: if the input is invalid, nothing is printed to standard output, all
+problems are written to standard error and the program exits with code 1.
+
+### Optional: step-by-step visual mode
+
+```
+python subset_construction.py --gui entrada.txt
+```
+
+The visual mode also opens automatically when the script is started with no
+arguments and no input redirection (for example, with the VS Code "Run" button).
+In that case it loads `entrada.txt` from the script folder or the current folder,
+or a built-in sample if neither exists.
+
+The window shows:
+
+- the DFA diagram as it is discovered: accepting states are drawn as double circles,
+  the initial state has an incoming arrow and edges are labelled with their symbols;
+- the transition table of the DFA, filled one cell at a time;
+- the BFS queue of states waiting to be expanded;
+- a log that explains every step formally, for example
+  `δ'({3, 5}, a) = Δ(3, a) ∪ Δ(5, a) = {2, 4} ∪ {1, 5} = {1, 2, 4, 5}`.
+
+Controls: Step, Back, Play/Pause with an adjustable delay (100 to 2000 ms),
+Run to end, Load/Reset, case selector, Open file and Edit input.
+
+If Tkinter or a display is not available, the program prints the tables instead.
 
 ## Input format
 
-The input must comply with the assignment specifications:
-
 ```
-c                      number of cases
-n                      number of states of the NFA (states are 1, 2, ..., n)
-S                      initial state(s), separated by spaces
-Sigma                  alphabet symbols, separated by spaces
-F                      final state(s), separated by spaces
-n lines                one line per state (in order 1..n), representing rows of the transition table
-
+c          number of cases
+n          number of states (the states are 1..n)
+S          initial states, separated by spaces
+Sigma      alphabet symbols, separated by spaces
+F          final states, separated by spaces
+n lines    row i: "i set_1 set_2 ..." (one set per symbol, in alphabet order)
 ```
 
-
-
-* Sets are formatted inside `{}` with blank spaces separating the elements (e.g., `{1 5}` or `{1, 5}`).
-
-
-* The empty set ($0$) is represented by `0`.
-
-
+Sets are written with braces, e.g. `{1 5}` (`{1, 5}` and `{}` are also accepted);
+the empty set is written `0`. A repeated state inside a set is allowed and counted
+once, since `{1 1}` is the same set as `{1}`.
 
 ## Output format
 
-For each test case, the program prints a formatted transition table representing the equivalent Deterministic Finite Automaton (DFA) $M$:
+For each case, the program prints one table; the tables of consecutive cases are
+separated by a single blank line:
 
-* `mark`: Identifies the initial state (`->`) and final/accepting states (`*`). A state can be both (`->*`).
+| Column    | Meaning                                                                 |
+|-----------|-------------------------------------------------------------------------|
+| `mark`    | `->` initial state, `*` accepting state, `->*` both                     |
+| `state`   | new name of the DFA state (1, 2, 3, ... in order of discovery)          |
+| `subset`  | set of NFA states that the DFA state represents (`0` is the empty set)  |
+| one column per symbol | the DFA state reached with that symbol                      |
 
+Example: for the input given in the assignment (file `entrada.txt`) the output is
 
-* `state`: Identifier assigned to each DFA state ($1, 2, 3, \dots$).
+```
+mark  state  subset     a  b
+->    1      {3 5}      2  3
+*     2      {1 2 4 5}  4  5
+*     3      {4}        6  7
+*     4      {1 5}      4  3
+*     5      {4 5}      4  5
+      6      0          6  6
+      7      {5}        4  3
+```
 
-
-* `subset`: The subset of NFA states represented by that DFA state (`0` represents the empty set).
-
-
-* One column per symbol of the alphabet ($\Sigma$), showing the destination state ID.
-
-
+The input is validated before the construction: the numbers of cases and states
+must be positive integers, every state must lie in {1..n}, the alphabet may not
+repeat symbols, there must be exactly one row per state with one well-formed set
+per symbol, and nothing may follow the last case. Error messages go to standard
+error, never to standard output.
 
 ## Explanation of the algorithm
 
-The implementation adheres to the Subset Construction method (Kozen 1997, Lecture 6):
+Let N = (Q, Σ, Δ, S, F) be an NFA, where Δ : Q × Σ → P(Q) and S ⊆ Q is a set of
+initial states. Following Kozen (1997, Lecture 6), the subset construction defines
+the DFA
 
-1. **Initial State:** The initial state of the DFA $M$ corresponds to the set $S$ containing all initial states of the NFA $N$.
+    M = (P(Q), Σ, δ', s', F')
 
+where
 
-2. **Subset Transitions:** For each reachable DFA macro-state $A \subseteq Q$ and each input symbol $a \in \Sigma$, the target set of states is computed as:
+- **States:** subsets A ⊆ Q of states of N.
+- **Initial state:** s' = S, the set of all initial states of N.
+- **Transition function:** δ'(A, a) = ⋃ { Δ(q, a) : q ∈ A }, i.e. every state that
+  N can reach from some state of A by reading a. In particular δ'(∅, a) = ∅.
+- **Accepting states:** F' = { A ⊆ Q : A ∩ F ≠ ∅ }, the subsets that contain at
+  least one accepting state of N.
 
-```math
-\delta'(A, a) = \bigcup_{q \in A} \Delta(q, a)
+**Why it works.** By induction on the length of a string x, the state reached by M
+after reading x is exactly the set of states that N can be in after reading x:
+δ̂'(S, x) = Δ̂(S, x). Hence x is accepted by M if and only if that set contains an
+accepting state of N, that is, if and only if N accepts x. So L(M) = L(N).
 
-```
+**Only reachable subsets.** P(Q) has 2^n elements, but most of them usually cannot
+be reached from S. Removing unreachable states does not change the language,
+because no string ever leads to them. The program therefore builds only the
+reachable part of M with a breadth-first search:
 
-3. **Reachability Exploration (BFS):** Starting from the initial set $S$, states are discovered using a queue (breadth-first search). Newly discovered target subsets are added to the queue and assigned sequential integer identifiers ($1, 2, \dots$). This ensures that only reachable states are generated in the transition table.
+1. Create state 1 = S and put it in a queue.
+2. Take the next subset A from the queue. For each symbol a ∈ Σ (in input order),
+   compute B = δ'(A, a). If B has not been seen before, give it the next number and
+   add it to the queue. Record the transition A --a--> B.
+3. Repeat step 2 until the queue is empty.
+4. Mark as accepting every discovered subset A with A ∩ F ≠ ∅.
 
+If the empty set is reached, it becomes an ordinary dead (sink) state that goes to
+itself on every symbol, so M is a complete DFA. For the example above, M has 7
+reachable states instead of 2^5 = 32.
 
-4. **Dead / Sink State:** If the empty set $\emptyset$ (represented as `0`) is reached, it is handled as a regular dead state that loops to itself across all symbols in $\Sigma$.
+**Complexity.** Each discovered subset is expanded once, and each expansion does
+|Σ| unions over at most n states, so the time is O(k · |Σ| · n) set operations,
+where k ≤ 2^n is the number of reachable subsets.
 
+**Implementation note.** The construction is a single generator,
+`subset_construction_steps`, that yields one event per step (start, expand,
+transition, done). The text mode consumes all events and prints the final table;
+the visual mode replays the same events one by one, so both modes always use
+exactly the same algorithm.
 
-5. **Acceptance Condition:** A DFA macro-state $A$ is an accepting state if and only if it contains at least one accepting state of the original NFA:
+## Reference
 
-
-
-```math
-A \cap F \neq \emptyset
-
-```
+Kozen, Dexter C. (1997). *Automata and Computability*. Springer-Verlag.
+https://doi.org/10.1007/978-1-4612-1844-9
